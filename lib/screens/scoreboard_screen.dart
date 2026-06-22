@@ -283,16 +283,19 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     );
   }
 
-  // Lays remaining entries in 2 or 3 columns, filling left-to-right then
-  // top-to-bottom so the animation stagger flows naturally across the grid.
+  // Lays remaining entries in 2 or 3 columns, filling top-to-bottom within
+  // each column before moving to the next (newspaper/reading order).
   Widget _buildRestGrid(int prizeOffset, List<ContestEntry> entries) {
     final cols = entries.length > 4 ? 3 : 2;
+    final rowsPerCol = (entries.length / cols).ceil();
     final colWidgets = List.generate(cols, (col) {
+      final start = col * rowsPerCol;
+      final end = (start + rowsPerCol).clamp(0, entries.length);
       return Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (int i = col; i < entries.length; i += cols)
+            for (int i = start; i < end; i++)
               _buildSmallRowAnimated(prizeOffset + i, entries[i]),
           ],
         ),
