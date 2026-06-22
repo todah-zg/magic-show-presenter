@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import '../models/contest_entry.dart';
+import '../services/sheets_service.dart';
 import 'scoreboard_screen.dart';
 
 enum _PresenterMode { video, scoreboard }
@@ -37,6 +39,8 @@ class _PresenterScreenState extends State<PresenterScreen> {
   // Guards against the listener firing twice at video end (e.g. during seek).
   bool _transitioning = false;
   _PresenterMode _mode = _PresenterMode.video;
+  // Pre-fetched while the video plays so the scoreboard appears without delay.
+  Future<List<ContestEntry>>? _scoresFuture;
 
   @override
   void initState() {
@@ -59,6 +63,13 @@ class _PresenterScreenState extends State<PresenterScreen> {
 
       if (!mounted) return;
       setState(() => _initialized = true);
+
+      // Kick off the first scores fetch now — the video will play for long
+      // enough that the result is ready before the scoreboard needs it.
+      _scoresFuture = SheetsService.fetchTopTen(
+        credentialsPath: widget.config.credentialsPath,
+        sheetId: widget.config.sheetId,
+      );
 
       await _controller.play();
     } catch (e) {
@@ -89,6 +100,11 @@ class _PresenterScreenState extends State<PresenterScreen> {
     // ready the instant we switch back — no flash of the last frame.
     await _controller.seekTo(Duration.zero);
     if (!mounted) return;
+    // Start the next fetch immediately so data is ready for the next cycle.
+    _scoresFuture = SheetsService.fetchTopTen(
+      credentialsPath: widget.config.credentialsPath,
+      sheetId: widget.config.sheetId,
+    );
     setState(() {
       _mode = _PresenterMode.video;
       _transitioning = false;
@@ -108,6 +124,7 @@ class _PresenterScreenState extends State<PresenterScreen> {
     if (_mode == _PresenterMode.scoreboard) {
       return ScoreboardScreen(
         config: widget.config,
+        scoresFuture: _scoresFuture,
         onComplete: _onScoreboardComplete,
       );
     }

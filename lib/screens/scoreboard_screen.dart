@@ -7,11 +7,15 @@ import 'presenter_screen.dart';
 class ScoreboardScreen extends StatefulWidget {
   final PresenterConfig config;
   final VoidCallback onComplete;
+  // Pre-fetched by PresenterScreen while the video was playing.
+  // Awaiting an already-completed future returns instantly.
+  final Future<List<ContestEntry>>? scoresFuture;
 
   const ScoreboardScreen({
     super.key,
     required this.config,
     required this.onComplete,
+    this.scoresFuture,
   });
 
   @override
@@ -40,10 +44,11 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
 
   Future<void> _fetchData() async {
     try {
-      final entries = await SheetsService.fetchTopTen(
-        credentialsPath: widget.config.credentialsPath,
-        sheetId: widget.config.sheetId,
-      );
+      final entries = await (widget.scoresFuture ??
+          SheetsService.fetchTopTen(
+            credentialsPath: widget.config.credentialsPath,
+            sheetId: widget.config.sheetId,
+          ));
       if (mounted) setState(() => _entries = entries);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
