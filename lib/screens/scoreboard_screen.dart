@@ -7,8 +7,6 @@ import 'presenter_screen.dart';
 class ScoreboardScreen extends StatefulWidget {
   final PresenterConfig config;
   final VoidCallback onComplete;
-  // Pre-fetched by PresenterScreen while the video was playing.
-  // Awaiting an already-completed future returns instantly.
   final Future<List<ContestEntry>>? scoresFuture;
 
   const ScoreboardScreen({
@@ -27,6 +25,15 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   String? _error;
   late int _secondsRemaining;
   Timer? _countdownTimer;
+
+  // Tracks which rows have become visible for the staggered animation.
+  List<bool> _rowVisible = [];
+
+  static const _rankColors = [
+    Color(0xFFFFD700), // gold
+    Color(0xFFC0C0C0), // silver
+    Color(0xFFCD7F32), // bronze
+  ];
 
   @override
   void initState() {
@@ -49,9 +56,24 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             credentialsPath: widget.config.credentialsPath,
             sheetId: widget.config.sheetId,
           ));
-      if (mounted) setState(() => _entries = entries);
+      if (!mounted) return;
+      setState(() {
+        _entries = entries;
+        _rowVisible = List.filled(entries.length, false);
+      });
+      _animateRows(entries.length);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  // Reveals rows one by one with a short delay between each for a dramatic
+  // staggered entrance. AnimatedOpacity / AnimatedSlide handle the tweening.
+  Future<void> _animateRows(int count) async {
+    for (int i = 0; i < count; i++) {
+      await Future.delayed(const Duration(milliseconds: 70));
+      if (!mounted) return;
+      setState(() => _rowVisible[i] = true);
     }
   }
 
@@ -71,45 +93,70 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A14),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 48),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 12),
-            const Divider(color: Colors.white12),
-            const SizedBox(height: 8),
-            Expanded(child: _buildContent()),
-            _buildCountdown(),
-          ],
-        ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(context),
+          const Divider(height: 1, color: Color(0xFF0031EA), thickness: 1),
+          Expanded(child: _buildContent()),
+          _buildCountdown(),
+        ],
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.emoji_events, color: Color(0xFFFF9100), size: 36),
-        const SizedBox(width: 16),
-        Text(
-          'LEADERBOARD',
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 4,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(64, 40, 64, 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0031EA),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.bolt, color: Colors.white, size: 28),
           ),
-        ),
-        const Spacer(),
-        Text(
-          'Fastest Lego Builders',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.white38,
-            letterSpacing: 1,
+          const SizedBox(width: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'LEADERBOARD',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 5,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                'FASTEST LEGO BUILDERS',
+                style: TextStyle(
+                  color: Color(0xFF00CEFF),
+                  fontSize: 13,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const Spacer(),
+          const Text(
+            'CODEMAGIC',
+            style: TextStyle(
+              color: Color(0xFF0031EA),
+              fontSize: 15,
+              letterSpacing: 4,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -146,50 +193,94 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
         ),
       );
     }
-    return Column(
-      children: [
-        for (int i = 0; i < _entries!.length; i++)
-          _buildRow(i, _entries![i]),
-      ],
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(64, 20, 64, 8),
+      itemCount: _entries!.length,
+      itemBuilder: (_, i) => _buildRow(i, _entries![i]),
     );
   }
 
   Widget _buildRow(int index, ContestEntry entry) {
-    final rankColor = switch (index) {
-      0 => const Color(0xFFFFD700), // gold
-      1 => const Color(0xFFC0C0C0), // silver
-      2 => const Color(0xFFCD7F32), // bronze
-      _ => Colors.white38,
-    };
+    final visible = index < _rowVisible.length && _rowVisible[index];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+    return AnimatedSlide(
+      offset: visible ? Offset.zero : const Offset(0.04, 0),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+      child: AnimatedOpacity(
+        opacity: visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 350),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: index < 3
+              ? _buildTop3Row(index, entry)
+              : _buildRegularRow(index, entry),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTop3Row(int index, ContestEntry entry) {
+    final rankColor = _rankColors[index];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        // ignore: deprecated_member_use
+        color: rankColor.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: rankColor, width: 4)),
+      ),
       child: Row(
         children: [
-          SizedBox(
-            width: 52,
-            child: Text(
-              '${index + 1}',
-              style: TextStyle(
-                color: rankColor,
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
+          _RankBadge(rank: index + 1, color: rankColor, size: 44),
+          const SizedBox(width: 20),
           Expanded(
             child: Text(
               entry.displayName,
-              style: const TextStyle(color: Colors.white, fontSize: 30),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Text(
             entry.formattedTime,
             style: const TextStyle(
-              color: Color(0xFF00CEFF), // Dash Aqua
-              fontSize: 30,
+              color: Color(0xFF00CEFF),
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegularRow(int index, ContestEntry entry) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      child: Row(
+        children: [
+          _RankBadge(rank: index + 1, color: Colors.white24, size: 36),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Text(
+              entry.displayName,
+              style: const TextStyle(
+                color: Color(0xFFCCCCCC),
+                fontSize: 26,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            entry.formattedTime,
+            style: const TextStyle(
+              color: Color(0xFF00CEFF),
+              fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -200,25 +291,59 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
 
   Widget _buildCountdown() {
     final progress = _secondsRemaining / widget.config.scoreboardDuration;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        const SizedBox(height: 16),
-        Text(
-          'Resuming in $_secondsRemaining s',
-          style: const TextStyle(color: Colors.white24, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 4,
-            backgroundColor: Colors.white12,
-            valueColor: const AlwaysStoppedAnimation(Color(0xFF0031EA)),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(64, 12, 64, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            'Resuming in $_secondsRemaining s',
+            style: const TextStyle(color: Colors.white24, fontSize: 13),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: Colors.white12,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF0031EA)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RankBadge extends StatelessWidget {
+  final int rank;
+  final Color color;
+  final double size;
+
+  const _RankBadge({required this.rank, required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        // ignore: deprecated_member_use
+        color: color.withOpacity(0.15),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Center(
+        child: Text(
+          '$rank',
+          style: TextStyle(
+            color: color,
+            fontSize: size * 0.42,
+            fontWeight: FontWeight.bold,
           ),
         ),
-      ],
+      ),
     );
   }
 }
