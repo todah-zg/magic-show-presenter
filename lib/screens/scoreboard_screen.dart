@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../models/contest_entry.dart';
 import '../services/sheets_service.dart';
 import 'presenter_screen.dart';
@@ -26,7 +27,6 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   late int _secondsRemaining;
   Timer? _countdownTimer;
 
-  // Tracks which rows have become visible for the staggered animation.
   List<bool> _rowVisible = [];
 
   static const _rankColors = [
@@ -34,6 +34,12 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     Color(0xFFC0C0C0), // silver
     Color(0xFFCD7F32), // bronze
   ];
+
+  // Codemagic brand palette
+  static const _blue = Color(0xFF0031EA);
+  static const _cyan = Color(0xFF00CEFF);
+  static const _orange = Color(0xFFFF9100);
+  static const _red = Color(0xFFEC0C43);
 
   @override
   void initState() {
@@ -67,8 +73,6 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     }
   }
 
-  // Reveals rows one by one with a short delay between each for a dramatic
-  // staggered entrance. AnimatedOpacity / AnimatedSlide handle the tweening.
   Future<void> _animateRows(int count) async {
     for (int i = 0; i < count; i++) {
       await Future.delayed(const Duration(milliseconds: 70));
@@ -96,8 +100,9 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildTopBar(),
           _buildHeader(context),
-          const Divider(height: 1, color: Color(0xFF0031EA), thickness: 1),
+          _buildDivider(),
           Expanded(child: _buildContent()),
           _buildCountdown(),
         ],
@@ -105,21 +110,22 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     );
   }
 
+  // 4px gradient bar — the brand signature red-to-orange stripe
+  Widget _buildTopBar() {
+    return Container(
+      height: 4,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [_red, _orange]),
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(64, 40, 64, 24),
+      padding: const EdgeInsets.fromLTRB(64, 36, 64, 24),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0031EA),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.bolt, color: Colors.white, size: 28),
-          ),
-          const SizedBox(width: 20),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -133,11 +139,11 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                   height: 1,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
               const Text(
                 'FASTEST LEGO BUILDERS',
                 style: TextStyle(
-                  color: Color(0xFF00CEFF),
+                  color: _cyan,
                   fontSize: 13,
                   letterSpacing: 3,
                   fontWeight: FontWeight.w600,
@@ -146,16 +152,22 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             ],
           ),
           const Spacer(),
-          const Text(
-            'CODEMAGIC',
-            style: TextStyle(
-              color: Color(0xFF0031EA),
-              fontSize: 15,
-              letterSpacing: 4,
-              fontWeight: FontWeight.bold,
-            ),
+          SvgPicture.asset(
+            'assets/images/codemagic_logo.svg',
+            height: 28,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Container(
+      height: 1,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_blue, _cyan, _blue],
+        ),
       ),
     );
   }
@@ -248,7 +260,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
           Text(
             entry.formattedTime,
             style: const TextStyle(
-              color: Color(0xFF00CEFF),
+              color: _cyan,
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
@@ -279,7 +291,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
           Text(
             entry.formattedTime,
             style: const TextStyle(
-              color: Color(0xFF00CEFF),
+              color: _cyan,
               fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
@@ -303,11 +315,20 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 3,
-              backgroundColor: Colors.white12,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF0031EA)),
+            child: Container(
+              height: 3,
+              color: Colors.white12,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: progress,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(colors: [_blue, _cyan]),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
