@@ -1,0 +1,118 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+
+// Typed bag of everything the settings screen collected.
+// Passing it as a constructor arg keeps PresenterScreen free of SharedPreferences.
+class PresenterConfig {
+  final String videoPath;
+  final String credentialsPath;
+  final String sheetId;
+  final int scoreboardDuration;
+
+  const PresenterConfig({
+    required this.videoPath,
+    required this.credentialsPath,
+    required this.sheetId,
+    required this.scoreboardDuration,
+  });
+}
+
+class PresenterScreen extends StatefulWidget {
+  final PresenterConfig config;
+
+  const PresenterScreen({super.key, required this.config});
+
+  @override
+  State<PresenterScreen> createState() => _PresenterScreenState();
+}
+
+class _PresenterScreenState extends State<PresenterScreen> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+  // Guards against the listener firing twice at video end (e.g. during seek).
+  bool _transitioning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    _controller = VideoPlayerController.file(
+      File(widget.config.videoPath),
+    );
+
+    // initialize() reads the file header and makes value.size / value.duration
+    // available. Nothing plays yet.
+    await _controller.initialize();
+
+    // Attach the listener before play() so we never miss the completion event.
+    _controller.addListener(_onVideoUpdate);
+
+    if (!mounted) return;
+    setState(() => _initialized = true);
+
+    await _controller.play();
+  }
+
+  void _onVideoUpdate() {
+    if (_transitioning) return;
+    if (_controller.value.isCompleted) {
+      _transitioning = true;
+      _onVideoComplete();
+    }
+  }
+
+  Future<void> _onVideoComplete() async {
+    // TODO: crossfade to scoreboard here (next step).
+    // For now, immediately loop back to the start.
+    await _controller.seekTo(Duration.zero);
+    await _controller.play();
+    _transitioning = false;
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onVideoUpdate);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _initialized ? _buildVideo() : _buildLoading(),
+    );
+  }
+
+  Widget _buildVideo() {
+    return SizedBox.expand(
+      child: FittedBox(
+        // BoxFit.contain keeps the full frame visible (letterboxed).
+        // Use BoxFit.cover if you'd rather fill the screen and crop edges.
+        fit: BoxFit.contain,
+        child: SizedBox(
+          width: _controller.value.size.width,
+          height: _controller.value.size.height,
+          child: VideoPlayer(_controller),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Loading video…', style: TextStyle(color: Colors.white54)),
+        ],
+      ),
+    );
+  }
+}
