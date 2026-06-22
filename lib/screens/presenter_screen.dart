@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'scoreboard_screen.dart';
+
+enum _PresenterMode { video, scoreboard }
 
 // Typed bag of everything the settings screen collected.
 // Passing it as a constructor arg keeps PresenterScreen free of SharedPreferences.
@@ -32,6 +35,7 @@ class _PresenterScreenState extends State<PresenterScreen> {
   bool _initialized = false;
   // Guards against the listener firing twice at video end (e.g. during seek).
   bool _transitioning = false;
+  _PresenterMode _mode = _PresenterMode.video;
 
   @override
   void initState() {
@@ -65,12 +69,25 @@ class _PresenterScreenState extends State<PresenterScreen> {
     }
   }
 
-  Future<void> _onVideoComplete() async {
-    // TODO: crossfade to scoreboard here (next step).
-    // For now, immediately loop back to the start.
+  void _onVideoComplete() {
+    setState(() => _mode = _PresenterMode.scoreboard);
+  }
+
+  void _onScoreboardComplete() {
+    // Fire-and-forget: the async work inside updates state when ready.
+    _resumeVideo();
+  }
+
+  Future<void> _resumeVideo() async {
+    // Seek while the scoreboard is still visible so the first video frame is
+    // ready the instant we switch back — no flash of the last frame.
     await _controller.seekTo(Duration.zero);
+    if (!mounted) return;
+    setState(() {
+      _mode = _PresenterMode.video;
+      _transitioning = false;
+    });
     await _controller.play();
-    _transitioning = false;
   }
 
   @override
@@ -82,6 +99,12 @@ class _PresenterScreenState extends State<PresenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_mode == _PresenterMode.scoreboard) {
+      return ScoreboardScreen(
+        config: widget.config,
+        onComplete: _onScoreboardComplete,
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       body: _initialized ? _buildVideo() : _buildLoading(),
