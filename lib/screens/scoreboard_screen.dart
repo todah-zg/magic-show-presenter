@@ -122,7 +122,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(64, 36, 64, 24),
+      padding: const EdgeInsets.fromLTRB(48, 24, 48, 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -130,22 +130,23 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
+              const Text(
                 'LEADERBOARD',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                style: TextStyle(
                   color: Colors.white,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 5,
                   height: 1,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               const Text(
                 'FASTEST LEGO BUILDERS',
                 style: TextStyle(
                   color: _cyan,
-                  fontSize: 13,
-                  letterSpacing: 3,
+                  fontSize: 11,
+                  letterSpacing: 2,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -154,7 +155,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
           const Spacer(),
           SvgPicture.asset(
             'assets/images/codemagic_logo.svg',
-            height: 28,
+            height: 22,
           ),
         ],
       ),
@@ -206,7 +207,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(64, 20, 64, 8),
+      padding: const EdgeInsets.fromLTRB(48, 14, 48, 8),
       itemCount: _entries!.length,
       itemBuilder: (_, i) => _buildRow(i, _entries![i]),
     );
@@ -223,7 +224,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
         opacity: visible ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 350),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: 3),
           child: index < 3
               ? _buildTop3Row(index, entry)
               : _buildRegularRow(index, entry),
@@ -235,23 +236,23 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   Widget _buildTop3Row(int index, ContestEntry entry) {
     final rankColor = _rankColors[index];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         // ignore: deprecated_member_use
         color: rankColor.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(left: BorderSide(color: rankColor, width: 4)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: rankColor, width: 3)),
       ),
       child: Row(
         children: [
-          _RankBadge(rank: index + 1, color: rankColor, size: 44),
-          const SizedBox(width: 20),
+          _RankBadge(rank: index + 1, color: rankColor, size: 34),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               entry.displayName,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 32,
+                fontSize: 22,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -261,7 +262,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             entry.formattedTime,
             style: const TextStyle(
               color: _cyan,
-              fontSize: 32,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -272,17 +273,17 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
 
   Widget _buildRegularRow(int index, ContestEntry entry) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(
         children: [
-          _RankBadge(rank: index + 1, color: Colors.white24, size: 36),
-          const SizedBox(width: 20),
+          _RankBadge(rank: index + 1, color: Colors.white24, size: 26),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               entry.displayName,
               style: const TextStyle(
                 color: Color(0xFFCCCCCC),
-                fontSize: 26,
+                fontSize: 18,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
@@ -292,7 +293,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             entry.formattedTime,
             style: const TextStyle(
               color: _cyan,
-              fontSize: 26,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -304,15 +305,15 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   Widget _buildCountdown() {
     final progress = _secondsRemaining / widget.config.scoreboardDuration;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(64, 12, 64, 32),
+      padding: const EdgeInsets.fromLTRB(48, 10, 48, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
             'Resuming in $_secondsRemaining s',
-            style: const TextStyle(color: Colors.white24, fontSize: 13),
+            style: const TextStyle(color: Colors.white24, fontSize: 12),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: Container(
