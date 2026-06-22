@@ -14,16 +14,15 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
-    // Ensure the window is tall enough for the settings form.
+    // 16:9 HD minimum — the app is designed for TV display.
     // Clear autosave so a previously-saved small frame doesn't override this.
     self.setFrameAutosaveName("")
-    let minSize = NSSize(width: 600, height: 720)
+    let minSize = NSSize(width: 1280, height: 720)
     self.minSize = minSize
-    if self.frame.size.height < minSize.height {
-      var f = self.frame
-      f.size.height = minSize.height
-      self.setFrame(f, display: false)
-    }
+    var f = self.frame
+    if f.size.width < minSize.width { f.size.width = minSize.width }
+    if f.size.height < minSize.height { f.size.height = minSize.height }
+    self.setFrame(f, display: false)
 
     // On macOS 26, NSOpenPanel does not restore the Flutter view as first
     // responder when it closes. Without first-responder status the view's
