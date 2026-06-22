@@ -33,6 +33,7 @@ class PresenterScreen extends StatefulWidget {
 class _PresenterScreenState extends State<PresenterScreen> {
   late VideoPlayerController _controller;
   bool _initialized = false;
+  String? _videoError;
   // Guards against the listener firing twice at video end (e.g. during seek).
   bool _transitioning = false;
   _PresenterMode _mode = _PresenterMode.video;
@@ -44,21 +45,26 @@ class _PresenterScreenState extends State<PresenterScreen> {
   }
 
   Future<void> _initVideo() async {
-    _controller = VideoPlayerController.file(
-      File(widget.config.videoPath),
-    );
+    try {
+      _controller = VideoPlayerController.file(
+        File(widget.config.videoPath),
+      );
 
-    // initialize() reads the file header and makes value.size / value.duration
-    // available. Nothing plays yet.
-    await _controller.initialize();
+      // initialize() reads the file header and makes value.size / value.duration
+      // available. Nothing plays yet.
+      await _controller.initialize();
 
-    // Attach the listener before play() so we never miss the completion event.
-    _controller.addListener(_onVideoUpdate);
+      // Attach the listener before play() so we never miss the completion event.
+      _controller.addListener(_onVideoUpdate);
 
-    if (!mounted) return;
-    setState(() => _initialized = true);
+      if (!mounted) return;
+      setState(() => _initialized = true);
 
-    await _controller.play();
+      await _controller.play();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _videoError = e.toString());
+    }
   }
 
   void _onVideoUpdate() {
@@ -107,7 +113,11 @@ class _PresenterScreenState extends State<PresenterScreen> {
     }
     return Scaffold(
       backgroundColor: Colors.black,
-      body: _initialized ? _buildVideo() : _buildLoading(),
+      body: _videoError != null
+          ? _buildError()
+          : _initialized
+              ? _buildVideo()
+              : _buildLoading(),
     );
   }
 
@@ -134,6 +144,33 @@ class _PresenterScreenState extends State<PresenterScreen> {
           CircularProgressIndicator(),
           SizedBox(height: 16),
           Text('Loading video…', style: TextStyle(color: Colors.white54)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.videocam_off, color: Colors.white38, size: 64),
+          const SizedBox(height: 16),
+          const Text(
+            'Could not load video',
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _videoError ?? '',
+            style: const TextStyle(color: Colors.white38, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Back to settings'),
+          ),
         ],
       ),
     );

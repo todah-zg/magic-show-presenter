@@ -72,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickVideoFile() async {
+    FocusScope.of(context).unfocus();
     final result = await FilePicker.platform.pickFiles(
       type: FileType.video,
       allowMultiple: false,
@@ -82,6 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickCredentialsFile() async {
+    FocusScope.of(context).unfocus();
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -100,22 +102,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         (int.tryParse(_durationController.text) ?? 0) > 0;
   }
 
-  Future<void> _start() async {
-    await _savePreferences();
-    // mounted check is required after any await — the user might have closed
-    // the window while the prefs write was in flight.
-    if (!mounted) return;
+  void _start() {
+    final config = PresenterConfig(
+      videoPath: _videoPath!,
+      credentialsPath: _credentialsPath!,
+      sheetId: _sheetIdController.text.trim(),
+      scoreboardDuration: int.tryParse(_durationController.text) ?? 30,
+    );
+    // Save in the background — don't let an async write block the navigation.
+    _savePreferences();
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PresenterScreen(
-          config: PresenterConfig(
-            videoPath: _videoPath!,
-            credentialsPath: _credentialsPath!,
-            sheetId: _sheetIdController.text.trim(),
-            scoreboardDuration: int.tryParse(_durationController.text) ?? 30,
-          ),
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => PresenterScreen(config: config)),
     );
   }
 
@@ -128,9 +125,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      body: Center(
-        child: SizedBox(
-          width: 520,
+      body: SingleChildScrollView(
+        child: Center(
+          child: SizedBox(
+            width: 520,
           child: Padding(
             padding: const EdgeInsets.all(40),
             child: Column(
@@ -178,6 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

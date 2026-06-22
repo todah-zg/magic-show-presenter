@@ -110,15 +110,21 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
 
   Widget _buildContent() {
     if (_error != null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off, color: Colors.white24, size: 48),
-            SizedBox(height: 16),
-            Text(
+            const Icon(Icons.cloud_off, color: Colors.white24, size: 48),
+            const SizedBox(height: 16),
+            const Text(
               'Could not load scores',
               style: TextStyle(color: Colors.white38, fontSize: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.white24, fontSize: 13),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
