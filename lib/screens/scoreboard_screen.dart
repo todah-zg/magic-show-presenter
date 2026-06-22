@@ -27,13 +27,8 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   late int _secondsRemaining;
   Timer? _countdownTimer;
 
+  // One bool per entry — revealed in order for the staggered animation.
   List<bool> _rowVisible = [];
-
-  static const _rankColors = [
-    Color(0xFFFFD700), // gold
-    Color(0xFFC0C0C0), // silver
-    Color(0xFFCD7F32), // bronze
-  ];
 
   // Codemagic brand palette
   static const _blue = Color(0xFF0031EA);
@@ -93,6 +88,15 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     });
   }
 
+  Color _rankColor(int index) {
+    const podium = [
+      Color(0xFFFFD700), // gold
+      Color(0xFFC0C0C0), // silver
+      Color(0xFFCD7F32), // bronze
+    ];
+    return index < podium.length ? podium[index] : _blue;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,7 +105,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildTopBar(),
-          _buildHeader(context),
+          _buildHeader(),
           _buildDivider(),
           Expanded(child: _buildContent()),
           _buildCountdown(),
@@ -110,7 +114,6 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     );
   }
 
-  // 4px gradient bar — the brand signature red-to-orange stripe
   Widget _buildTopBar() {
     return Container(
       height: 4,
@@ -120,17 +123,17 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(48, 24, 48, 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'LEADERBOARD',
                 style: TextStyle(
                   color: Colors.white,
@@ -140,8 +143,8 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                   height: 1,
                 ),
               ),
-              const SizedBox(height: 5),
-              const Text(
+              SizedBox(height: 5),
+              Text(
                 'FASTEST LEGO BUILDERS',
                 style: TextStyle(
                   color: _cyan,
@@ -153,10 +156,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             ],
           ),
           const Spacer(),
-          SvgPicture.asset(
-            'assets/images/codemagic_logo.svg',
-            height: 22,
-          ),
+          SvgPicture.asset('assets/images/codemagic_logo.svg', height: 22),
         ],
       ),
     );
@@ -166,9 +166,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     return Container(
       height: 1,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_blue, _cyan, _blue],
-        ),
+        gradient: LinearGradient(colors: [_blue, _cyan, _blue]),
       ),
     );
   }
@@ -206,16 +204,32 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
         ),
       );
     }
-    return ListView.builder(
+
+    final prizeCount = widget.config.prizeCount.clamp(0, _entries!.length);
+    final topEntries = _entries!.sublist(0, prizeCount);
+    final restEntries = _entries!.sublist(prizeCount);
+
+    return Padding(
       padding: const EdgeInsets.fromLTRB(48, 14, 48, 8),
-      itemCount: _entries!.length,
-      itemBuilder: (_, i) => _buildRow(i, _entries![i]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (int i = 0; i < topEntries.length; i++)
+            _buildPrizeRowAnimated(i, topEntries[i]),
+          if (restEntries.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(height: 1, color: Colors.white10),
+            const SizedBox(height: 8),
+            _buildRestGrid(prizeCount, restEntries),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildRow(int index, ContestEntry entry) {
+  Widget _buildPrizeRowAnimated(int index, ContestEntry entry) {
     final visible = index < _rowVisible.length && _rowVisible[index];
-
     return AnimatedSlide(
       offset: visible ? Offset.zero : const Offset(0.04, 0),
       duration: const Duration(milliseconds: 350),
@@ -225,16 +239,14 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
         duration: const Duration(milliseconds: 350),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
-          child: index < 3
-              ? _buildTop3Row(index, entry)
-              : _buildRegularRow(index, entry),
+          child: _buildPrizeRow(index, entry),
         ),
       ),
     );
   }
 
-  Widget _buildTop3Row(int index, ContestEntry entry) {
-    final rankColor = _rankColors[index];
+  Widget _buildPrizeRow(int index, ContestEntry entry) {
+    final rankColor = _rankColor(index);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
@@ -245,14 +257,14 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
       ),
       child: Row(
         children: [
-          _RankBadge(rank: index + 1, color: rankColor, size: 34),
+          _RankBadge(rank: index + 1, color: rankColor, size: 28),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
               entry.displayName,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -262,7 +274,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
             entry.formattedTime,
             style: const TextStyle(
               color: _cyan,
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -271,33 +283,67 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
     );
   }
 
-  Widget _buildRegularRow(int index, ContestEntry entry) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Row(
-        children: [
-          _RankBadge(rank: index + 1, color: Colors.white24, size: 26),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              entry.displayName,
-              style: const TextStyle(
-                color: Color(0xFFCCCCCC),
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
+  // Lays remaining entries in 2 or 3 columns, filling left-to-right then
+  // top-to-bottom so the animation stagger flows naturally across the grid.
+  Widget _buildRestGrid(int prizeOffset, List<ContestEntry> entries) {
+    final cols = entries.length > 4 ? 3 : 2;
+    final colWidgets = List.generate(cols, (col) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int i = col; i < entries.length; i += cols)
+              _buildSmallRowAnimated(prizeOffset + i, entries[i]),
+          ],
+        ),
+      );
+    });
+
+    final rowChildren = <Widget>[];
+    for (int i = 0; i < colWidgets.length; i++) {
+      if (i > 0) rowChildren.add(const SizedBox(width: 16));
+      rowChildren.add(colWidgets[i]);
+    }
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: rowChildren);
+  }
+
+  Widget _buildSmallRowAnimated(int fullIndex, ContestEntry entry) {
+    final visible = fullIndex < _rowVisible.length && _rowVisible[fullIndex];
+    return AnimatedSlide(
+      offset: visible ? Offset.zero : const Offset(0.04, 0),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+      child: AnimatedOpacity(
+        opacity: visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 350),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              _RankBadge(rank: fullIndex + 1, color: Colors.white24, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  entry.displayName,
+                  style: const TextStyle(
+                    color: Color(0xFFAAAAAA),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+              Text(
+                entry.formattedTime,
+                style: const TextStyle(
+                  color: _cyan,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          Text(
-            entry.formattedTime,
-            style: const TextStyle(
-              color: _cyan,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

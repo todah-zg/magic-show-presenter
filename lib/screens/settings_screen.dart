@@ -17,11 +17,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _keyCredentials = 'credentials_path';
   static const _keySheetId = 'sheet_id';
   static const _keyDuration = 'scoreboard_duration';
+  static const _keyPrizeCount = 'prize_count';
 
-  // Controllers bridge text fields to our state.
-  // They are created once and disposed when the widget leaves the tree.
   final _sheetIdController = TextEditingController();
   final _durationController = TextEditingController();
+  final _prizeCountController = TextEditingController();
 
   String? _videoPath;
   String? _credentialsPath;
@@ -41,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _sheetIdController.dispose();
     _durationController.dispose();
+    _prizeCountController.dispose();
     super.dispose();
   }
 
@@ -54,6 +55,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _sheetIdController.text = prefs.getString(_keySheetId) ?? '';
       _durationController.text =
           (prefs.getInt(_keyDuration) ?? 30).toString();
+      _prizeCountController.text =
+          (prefs.getInt(_keyPrizeCount) ?? 3).toString();
       _loading = false;
     });
   }
@@ -68,6 +71,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setInt(
       _keyDuration,
       int.tryParse(_durationController.text) ?? 30,
+    );
+    await prefs.setInt(
+      _keyPrizeCount,
+      int.tryParse(_prizeCountController.text) ?? 3,
     );
   }
 
@@ -99,7 +106,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _videoPath != null &&
         _credentialsPath != null &&
         _sheetIdController.text.trim().isNotEmpty &&
-        (int.tryParse(_durationController.text) ?? 0) > 0;
+        (int.tryParse(_durationController.text) ?? 0) > 0 &&
+        (int.tryParse(_prizeCountController.text) ?? 0) > 0;
   }
 
   void _start() {
@@ -108,6 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       credentialsPath: _credentialsPath!,
       sheetId: _sheetIdController.text.trim(),
       scoreboardDuration: int.tryParse(_durationController.text) ?? 30,
+      prizeCount: int.tryParse(_prizeCountController.text) ?? 3,
     );
     // Save in the background — don't let an async write block the navigation.
     _savePreferences();
@@ -159,6 +168,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: _durationController,
                   label: 'Scoreboard duration (seconds)',
                   hint: '30',
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _prizeCountController,
+                  label: 'Number of prizes',
+                  hint: '3',
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
                 const SizedBox(height: 40),

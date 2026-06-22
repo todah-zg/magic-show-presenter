@@ -14,12 +14,14 @@ class PresenterConfig {
   final String credentialsPath;
   final String sheetId;
   final int scoreboardDuration;
+  final int prizeCount;
 
   const PresenterConfig({
     required this.videoPath,
     required this.credentialsPath,
     required this.sheetId,
     required this.scoreboardDuration,
+    required this.prizeCount,
   });
 }
 
